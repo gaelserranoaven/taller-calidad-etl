@@ -1,0 +1,10 @@
+[run]
+# Rutas relativas a la raíz del proyecto en coverage.xml (etl/pipeline.py, etc.).
+# Sin esto SonarQube puede no casar los archivos y reportar 0 % de cobertura
+# (el scanner corre en otro contenedor, con otra ruta absoluta).
+relative_files = True
+branch = True
+source = .
+omit =
+    tests/*
+    .venv/*

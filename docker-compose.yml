@@ -1,0 +1,45 @@
+# Taller de calidad: SonarQube + pruebas + scanner, todo en Docker Desktop.
+# Stack independiente (no toca la carpeta/stack de n8n). Puerto usado: 9000.
+name: taller-calidad
+
+services:
+  sonarqube:
+    image: sonarqube:community
+    ports:
+      - "9000:9000"
+    environment:
+      # Evita que Elasticsearch aborte por vm.max_map_count en entornos de desarrollo.
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+
+  # Corre pytest dentro de un contenedor Python 3.11 y deja coverage.xml en la carpeta.
+  tests:
+    image: python:3.11-slim
+    profiles: ["tools"]
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+    command: >
+      sh -c "pip install -q --no-cache-dir -r requirements.txt &&
+             pytest -v --cov --cov-report=term-missing --cov-report=xml"
+
+  # Lee sonar-project.properties + coverage.xml y envía el análisis a SonarQube.
+  # Usa la red de compose: llega a SonarQube por el nombre del servicio (no necesita --network host).
+  scanner:
+    image: sonarsource/sonar-scanner-cli
+    profiles: ["tools"]
+    environment:
+      SONAR_HOST_URL: http://sonarqube:9000
+      SONAR_TOKEN: ${SONAR_TOKEN}
+    volumes:
+      - .:/usr/src
+
+volumes:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
